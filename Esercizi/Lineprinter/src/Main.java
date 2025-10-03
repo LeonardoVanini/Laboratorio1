@@ -31,11 +31,16 @@ public class Main {
             }
             System.out.println();
         }
-        else {
+        else if (direction == 1) {
             for (int i = 0; i < length; i++) {
                 System.out.println("*");
             }
         }
+        else {
+            System.out.println("direzione non valida");
+            return;
+        }
+
     }
 
 }
