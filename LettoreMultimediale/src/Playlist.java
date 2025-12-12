@@ -20,9 +20,9 @@ public class Playlist {
 
     @Override
     public String toString() {
-        String player = "Titolo\tAutore\tPosizione"+"\n\r";
+        String player = "Titolo\t\t\tAutore\t\t\tPosizione"+"\n\r";
         for (int i =0; i< brani.size();i++){
-            player=player+brani.get(i).toString()+"\t"+(i+1)+"\n\r";
+            player=player+brani.get(i).toString()+"\t\t\t"+(i+1)+"\n\r";
         }
         return player;
     }

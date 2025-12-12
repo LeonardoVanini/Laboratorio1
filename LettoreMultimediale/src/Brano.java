@@ -17,6 +17,6 @@ public class Brano {
 
     @Override
     public String toString() {
-        return getTitolo()+"\t"+getAutore();
+        return getTitolo()+"\t\t\t"+getAutore();
     }
 }

@@ -13,7 +13,7 @@ public class Main {
         } catch (ArrayIndexOutOfBoundsException e) {
             System.out.println("Errore : argomenti errati");
         }catch (NumberFormatException g){
-            System.out.println("Forato non double");
+            System.out.println("Formato non double");
         }
     }
 }
