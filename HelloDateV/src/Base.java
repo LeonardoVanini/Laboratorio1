@@ -1,22 +1,30 @@
-import java.util.Date;
+import java.time.LocalDate;
 import java.util.Objects;
 
 public abstract class Base {
     private int codice;
-    private Date dataDiCreazione;
+    private LocalDate dataDiCreazione;
 
-    abstract Date dataDiScadenza ();
+    public Base(int codice, LocalDate dataDiCreazione) {
+        this.codice = codice;
+        this.dataDiCreazione = dataDiCreazione;
+    }
+
+    abstract LocalDate dataDiScadenza ();
 
 
-    public void scaduto(Date data){
-        if (data.after(dataDiScadenza())){
-            System.out.println("È scaduto");
+    public boolean scaduto(LocalDate data){
+
+        if (data.isAfter(dataDiScadenza())){
+            return true;
+        }else {
+            return false;
         }
     }
 
     @Override
     public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass()) return false;
+        if (o == null || !(o instanceof Base)) return false;
         Base base = (Base) o;
         return codice == base.codice;
     }
@@ -35,7 +43,7 @@ public abstract class Base {
         return codice;
     }
 
-    public Date getDataDiCreazione() {
+    public LocalDate getDataDiCreazione() {
         return dataDiCreazione;
     }
 }
