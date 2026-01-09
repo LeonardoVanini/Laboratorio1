@@ -1,2 +1,50 @@
-import java.time.LocalDate;import java.time.LocalTime;import java.util.ArrayList;import java.util.Random;public class Main {public static void main(String[] args) {LocalDate data = LocalDate.now(); LocalTime time = LocalTime.now(); Random rnd = new Random(); ArrayList<Base>resoconto = new ArrayList<>(); System.out.println(data + " " + time); System.out.println(data.getDayOfMonth()); System.out.println(data.getMonthValue()); Libro l = new Libro(10,LocalDate.of(2026,1,1),10); Libro li = new Libro(203,LocalDate.of(2026,1,1),10); for (int i = 0; i < rnd.nextInt(50); i++) { if (rnd.nextBoolean()){ resoconto.add(new Libro(rnd.nextInt(100000),LocalDate.of(rnd.nextInt(2000,2025), rnd.nextInt(1,12),rnd.nextInt(1,30)), rnd.nextInt(90))); }else{ resoconto.add(new Abbonamento(rnd.nextInt(100000),LocalDate.of(rnd.nextInt(2000,2025), rnd.nextInt(1,12),rnd.nextInt(1,30)), rnd.nextInt(24))); } } System.out.println(l); resoconto.add(l); resoconto.add(li); Abbonamento a = new Abbonamento(203,LocalDate.of(2023,5,20),12); resoconto.add(a); for (Base uso : resoconto){ System.out.println(uso); } for (Base uso : resoconto){ if (uso.scaduto(LocalDate.of(2026,1,1))) { System.out.println(uso.getCodice()+" è scaduto"); } } for (int i = 0; i < resoconto.size(); i++) { for (int j = 0; j < resoconto.size(); j++) { if (resoconto.get(i).equals(resoconto.get(j)) && i!=j){ System.out.println(resoconto.get(i).getCodice()+" c'è più di una volta"); } } } }}
-//The Line
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Random;
+
+//TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
+// click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
+public class Main {
+    public static void main(String[] args) {
+        LocalDate data = LocalDate.now();
+        LocalTime time = LocalTime.now();
+        Random rnd = new Random();
+        ArrayList<Base>resoconto = new ArrayList<>();
+        System.out.println(data + " " + time);
+        System.out.println(data.getDayOfMonth());
+        System.out.println(data.getMonthValue());
+
+        Libro l = new Libro(10,LocalDate.of(2026,1,1),10);
+        Libro li = new Libro(203,LocalDate.of(2026,1,1),10);
+        for (int i = 0; i < rnd.nextInt(50); i++) {
+            if (rnd.nextBoolean()){
+                resoconto.add(new Libro(rnd.nextInt(100000),LocalDate.of(rnd.nextInt(2000,2025), rnd.nextInt(1,12),rnd.nextInt(1,30)), rnd.nextInt(90)));
+            }else{
+                resoconto.add(new Abbonamento(rnd.nextInt(100000),LocalDate.of(rnd.nextInt(2000,2025), rnd.nextInt(1,12),rnd.nextInt(1,30)), rnd.nextInt(24)));
+            }
+        }
+        System.out.println(l);
+
+        resoconto.add(l);
+        resoconto.add(li);
+        Abbonamento a = new Abbonamento(203,LocalDate.of(2023,5,20),12);
+        resoconto.add(a);
+        for (Base uso : resoconto){
+            System.out.println(uso);
+        }
+        for (Base uso : resoconto){
+            if (uso.scaduto(LocalDate.of(2026,1,1))) {
+                System.out.println(uso.getCodice()+" è scaduto");
+            }
+        }
+        for (int i = 0; i < resoconto.size(); i++) {
+            for (int j = 0; j < resoconto.size(); j++) {
+                if (resoconto.get(i).equals(resoconto.get(j)) && i!=j){
+                    System.out.println(resoconto.get(i).getCodice()+" c'è più di una volta");
+                }
+            }
+        }
+
+    }
+}
