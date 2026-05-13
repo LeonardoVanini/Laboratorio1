@@ -5,6 +5,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.ScreenUtils;
 
 import javax.swing.*;
@@ -16,13 +17,18 @@ import java.util.*;
 /** {@link com.badlogic.gdx.ApplicationListener} implementation shared by all platforms. */
 public class MainGame extends ApplicationAdapter {
     private SpriteBatch batch;
+    private ShapeRenderer shape;
     private Texture image;
     private Map<Integer,Texture> labirintoImage;
+    private connectLabirinto connect;
 
     private int[][] labirinto;
+    private int[] cameraPosition;
+    private int[] fini;
 
 
-    private int dimensioneImmagine = 256;
+    private int dimensioneImmagine = 50;
+    private int dimensioneInizio = 20;
     private int screenHeight;
 
 
@@ -32,9 +38,11 @@ public class MainGame extends ApplicationAdapter {
 
     @Override
     public void create() {
+        connect = new connectLabirinto();
         labirintoImage = new HashMap<>();
 
         batch = new SpriteBatch();
+        shape = new ShapeRenderer();
         image = new Texture("libgdx.png");
         labirintoImage.put(0,new Texture("pieno.png"));//.get(chiave)
         labirintoImage.put(1,new Texture("fineAlto.png"));
@@ -56,10 +64,13 @@ public class MainGame extends ApplicationAdapter {
 
 
 
-
-        labirinto = LabirintoDFS.ottieniLabirinto();
+        connect.setLabirinto(15);
+        labirinto = connect.getLabirinto();
+        fini = connect.getFini();
         screenHeight= Gdx.graphics.getHeight();
-        impostaDimensioneImmagine=screenHeight/ labirinto.length;
+        //impostaDimensioneImmagine=(int)Math.ceil((double)screenHeight/ labirinto.length);
+
+
     }
 
     @Override
@@ -69,17 +80,31 @@ public class MainGame extends ApplicationAdapter {
     }
 
     private void draw(){
-        ScreenUtils.clear(0.15f, 0.15f, 0.2f, 1f);
+        ScreenUtils.clear(0f, 1f, 0f, 1f);
         batch.begin();
         for (int i = 0; i < labirinto.length; i++) {
             for (int j = 0; j < labirinto[i].length; j++) {
                 //System.out.println(impostaDimensioneImmagine);
-                batch.draw(labirintoImage.get(labirinto[i][j]),impostaDimensioneImmagine*i,impostaDimensioneImmagine*(labirinto[i].length-j)-impostaDimensioneImmagine,impostaDimensioneImmagine,impostaDimensioneImmagine);
+                //batch.begin();
+                //batch.draw(labirintoImage.get(labirinto[i][j]),impostaDimensioneImmagine*i,impostaDimensioneImmagine*(labirinto[i].length-j)-impostaDimensioneImmagine,impostaDimensioneImmagine,impostaDimensioneImmagine);
+                batch.draw(labirintoImage.get(labirinto[i][j]),dimensioneImmagine*i,dimensioneImmagine*(labirinto[i].length-j)-dimensioneImmagine,dimensioneImmagine,dimensioneImmagine);
+                //batch.end();
+
+                /*if ((fini[0] == i && fini[1] ==j) ||(fini[2] == i && fini[3] ==j)){
+                    shape.begin();
+                    shape.setColor(0,1,0,1);
+                    shape.rect(dimensioneImmagine*i+(int)(dimensioneImmagine-dimensioneInizio)/2,dimensioneImmagine*(labirinto[i].length-j)-dimensioneImmagine+(int)(dimensioneImmagine-dimensioneInizio)/2,dimensioneInizio,dimensioneInizio);
+                    shape.end();
+                }*/
             }
         }
         //batch.draw(image, 140, 210);
         batch.end();
     }
+
+
+
+
 
     @Override
     public void dispose() {
@@ -88,16 +113,38 @@ public class MainGame extends ApplicationAdapter {
     }
 }
 
+class connectLabirinto{
+    private int[][] labirinto;
+    private int[] fini;
+
+    public void setLabirinto(int dimensione) {
+        this.labirinto = LabirintoDFS.ottieniLabirinto(dimensione);
+        this.fini = LabirintoDFS.completa();
+    }
+
+
+
+    public int[][] getLabirinto() {
+        return labirinto;
+    }
+
+    public int[] getFini() {
+        return fini;
+    }
+
+
+}
+
 class LabirintoDFS {
-    static final int SIZE = 99;
-    static int[][] labirinto = new int[SIZE][SIZE];
+    static int size = 21;
+    static int[][] labirinto;
     static Random rand = new Random();
     static Scanner input = new Scanner(System.in);
     static ArrayList<int[]> finali;
-    static int differenzaPosizione = 10;
     static ArrayList<boolean[]> direzioniImage = new ArrayList<>();
 
     static void prepara() {
+        labirinto = new int[size][size];
         direzioniImage.add(new boolean[]{false, false, false, false});
         direzioniImage.add(new boolean[]{true, false, false, false});
         direzioniImage.add(new boolean[]{false, true, false, false});
@@ -117,14 +164,18 @@ class LabirintoDFS {
     }
 
 
-    public static int[][] ottieniLabirinto() {
+    public static int[][] ottieniLabirinto(int dimensione) {
+        if (dimensione >0){
+            size = dimensione;
+        }
+        prepara();
         inizializzaGriglia();
 
-        prepara();
+
 
         genera(1, 1);
         analizza();
-        //completa();
+
         stampaLabirinto();
         return labirinto;
 
@@ -134,7 +185,7 @@ class LabirintoDFS {
 
     // Inizializza tutta la griglia con muri (0)
     static void inizializzaGriglia() {
-        for (int i = 0; i < SIZE; i++) {
+        for (int i = 0; i < size; i++) {
             Arrays.fill(labirinto[i], 0);
         }
         finali = new ArrayList<>();
@@ -171,33 +222,33 @@ class LabirintoDFS {
             }
         }
     }
-    static void completa(){
+    static int[] completa(){
+
         finali.clear();
 
-        for (int i = 0; i < SIZE; i++) {
-            for (int j = 0; j < SIZE; j++) {
-                if (labirinto[i][j] == 1) {
+        for (int i = 0; i < size; i++) {
+            for (int j = 0; j < size; j++) {
+                if (labirinto[i][j] >=1 && labirinto[i][j]<=4) {
                     finali.add(new int[]{i, j});
                 }
             }
         }
         int[] start= finali.get(rand.nextInt(finali.size()));
         int[] end;
+
+
         do {
             end = finali.get(rand.nextInt(finali.size()));
         }while (start == end);
-        /*
-        for (int[] i : finali) {
-            System.out.println(i[0]+", "+i[1]);
-        }*/
-        //labirinto[start[0]][start[1]]=5+differenzaPosizione;
-        //labirinto[end[0]][end[1]]=6;
+        //System.out.println(start +""+ end);
+
+        return new int[]{start[0],start[1],end[0],end[1]};
     }
     static void analizza(){
         //finali.clear();
 
-        for (int i = 0; i < SIZE; i++) {
-            for (int j = 0; j < SIZE; j++) {
+        for (int i = 0; i < size; i++) {
+            for (int j = 0; j < size; j++) {
                 int value = labirinto[i][j];
                 //int count =0;
                 if (value != 0){
@@ -235,7 +286,7 @@ class LabirintoDFS {
 
     // Verifica se la cella è valida per scavare
     static boolean èValida(int x, int y) {
-        return x > 0 && y > 0 && x < SIZE - 1 && y < SIZE - 1 && labirinto[x][y] == 0;
+        return x > 0 && y > 0 && x < size - 1 && y < size - 1 && labirinto[x][y] == 0;
     }
     static boolean èlabirinto(int x, int y){
         return labirinto[x][y] != 0;
@@ -250,8 +301,8 @@ class LabirintoDFS {
         Color inizio=Color.VIOLET;//5    Viola
         Color fine=Color.BLACK;//6 Nero*/
 
-        for (int i = 0; i < SIZE; i++) {
-            for (int j = 0; j < SIZE; j++) {
+        for (int i = 0; i < size; i++) {
+            for (int j = 0; j < size; j++) {
                 System.out.print(labirinto[j][i]+" \t");
                 /*if(labirinto[i][j] == 0){
                     System.out.print(muro);
