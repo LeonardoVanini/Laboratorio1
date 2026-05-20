@@ -2,10 +2,12 @@ package com.lab;
 
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.ScreenUtils;
 
 import javax.swing.*;
@@ -20,11 +22,13 @@ public class MainGame extends ApplicationAdapter {
     private ShapeRenderer shape;
     private Texture image;
     private Map<Integer,Texture> labirintoImage;
-    private connectLabirinto connect;
+    private ConnectLabirinto connect;
 
     private int[][] labirinto;
     private int[] cameraPosition;
     private int[] fini;
+
+    private int bufferEvento;
 
 
     private int dimensioneImmagine = 50;
@@ -38,7 +42,7 @@ public class MainGame extends ApplicationAdapter {
 
     @Override
     public void create() {
-        connect = new connectLabirinto();
+        connect = new ConnectLabirinto();
         labirintoImage = new HashMap<>();
 
         batch = new SpriteBatch();
@@ -79,6 +83,19 @@ public class MainGame extends ApplicationAdapter {
         draw();
     }
 
+    private void event(){
+        if (Gdx.input.isKeyPressed(Input.Keys.W)){
+            bufferEvento=1;
+        } else if (Gdx.input.isKeyPressed(Input.Keys.S)) {
+            bufferEvento=3;
+        }
+        if (Gdx.input.isKeyPressed(Input.Keys.D)){
+            bufferEvento=2;
+        } else if (Gdx.input.isKeyPressed(Input.Keys.A)) {
+            bufferEvento=4;
+        }
+    }
+
     private void draw(){
         ScreenUtils.clear(0f, 1f, 0f, 1f);
         batch.begin();
@@ -89,6 +106,10 @@ public class MainGame extends ApplicationAdapter {
                 //batch.draw(labirintoImage.get(labirinto[i][j]),impostaDimensioneImmagine*i,impostaDimensioneImmagine*(labirinto[i].length-j)-impostaDimensioneImmagine,impostaDimensioneImmagine,impostaDimensioneImmagine);
                 batch.draw(labirintoImage.get(labirinto[i][j]),dimensioneImmagine*i,dimensioneImmagine*(labirinto[i].length-j)-dimensioneImmagine,dimensioneImmagine,dimensioneImmagine);
                 //batch.end();
+
+
+
+
 
                 /*if ((fini[0] == i && fini[1] ==j) ||(fini[2] == i && fini[3] ==j)){
                     shape.begin();
@@ -113,7 +134,50 @@ public class MainGame extends ApplicationAdapter {
     }
 }
 
-class connectLabirinto{
+class Collisioni{
+    private int x;
+    private int y;
+    private int width;
+    private int whiteSpace;
+    private int blackSpace;
+    private int id;
+    private boolean[] directions;
+
+    private ArrayList<Rectangle> collisioni;
+
+    public Collisioni (int x, int y, int width, int whiteSpace, int id){
+        this.x=x;
+        this.y=y;
+        this.width=width;
+        this.whiteSpace = whiteSpace;
+        blackSpace=(width-whiteSpace)/2;
+        this.id = id;
+        directions = LabirintoDFS.direzioniImage.get(id);
+        collisioni =new ArrayList<>();
+        popola();
+    }
+
+    private void popola() {
+        collisioni.add(new Rectangle(x,y,blackSpace,blackSpace));
+        collisioni.add(new Rectangle(x+width-blackSpace,y,blackSpace,blackSpace));
+        collisioni.add(new Rectangle(x,y+width-blackSpace,blackSpace,blackSpace));
+        collisioni.add(new Rectangle(x+width-blackSpace,y+width-blackSpace,blackSpace,blackSpace));
+        if (!directions[0]){
+            collisioni.add(new Rectangle(x+blackSpace,y+width-blackSpace,whiteSpace,blackSpace));
+        }
+        if (!directions[1]){
+            collisioni.add(new Rectangle(x+blackSpace+whiteSpace,y+blackSpace,blackSpace,whiteSpace));
+        }
+        if (!directions[2]){
+            collisioni.add(new Rectangle(x+blackSpace,y,whiteSpace,blackSpace));
+        }
+        if (!directions[3]){
+            collisioni.add(new Rectangle(x,y+blackSpace,blackSpace,whiteSpace));
+        }
+    }
+}
+
+class ConnectLabirinto{
     private int[][] labirinto;
     private int[] fini;
 
@@ -145,6 +209,7 @@ class LabirintoDFS {
 
     static void prepara() {
         labirinto = new int[size][size];
+        direzioniImage.clear();
         direzioniImage.add(new boolean[]{false, false, false, false});
         direzioniImage.add(new boolean[]{true, false, false, false});
         direzioniImage.add(new boolean[]{false, true, false, false});
@@ -289,7 +354,12 @@ class LabirintoDFS {
         return x > 0 && y > 0 && x < size - 1 && y < size - 1 && labirinto[x][y] == 0;
     }
     static boolean èlabirinto(int x, int y){
-        return labirinto[x][y] != 0;
+        try{
+            return labirinto[x][y] != 0;
+        }catch (Exception ex){
+            return false;
+        }
+
     }
 
     // Stampa il labirinto in console
