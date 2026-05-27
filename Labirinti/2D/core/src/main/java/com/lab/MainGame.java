@@ -23,6 +23,7 @@ public class MainGame extends ApplicationAdapter {
     private Texture image;
     private Map<Integer,Texture> labirintoImage;
     private ConnectLabirinto connect;
+    private Collisioni[][] collisioni;
 
     private int[][] labirinto;
     private int[] cameraPosition;
@@ -31,11 +32,13 @@ public class MainGame extends ApplicationAdapter {
     private int bufferEvento;
 
 
-    private int dimensioneImmagine = 50;
-    private int dimensioneInizio = 20;
+
+    private int dimensioneImmagine = 64;
     private int screenHeight;
+    private int dimensioneLato =15;
 
-
+    private int worldX;
+    private int worldY;
 
 
     private int impostaDimensioneImmagine;
@@ -68,12 +71,15 @@ public class MainGame extends ApplicationAdapter {
 
 
 
-        connect.setLabirinto(15);
+        connect.setLabirinto(dimensioneLato);
         labirinto = connect.getLabirinto();
+        collisioni = new Collisioni[dimensioneLato][dimensioneLato];
         fini = connect.getFini();
         screenHeight= Gdx.graphics.getHeight();
         //impostaDimensioneImmagine=(int)Math.ceil((double)screenHeight/ labirinto.length);
 
+        worldX=fini[0]*dimensioneImmagine;
+        worldY= (labirinto.length- fini[1])*dimensioneImmagine -dimensioneImmagine;
 
     }
 
@@ -95,16 +101,127 @@ public class MainGame extends ApplicationAdapter {
             bufferEvento=4;
         }
     }
+/*
+Quindi worldX/worldY devono essere offset della mappa
 
+Nel draw:
+
+INVECE di:
+
+batch.draw(texture, x, y, d, d);
+
+devi fare:
+
+batch.draw(texture, x - worldX, y - worldY, d, d);
+Quello è il camera offset
+
+Se:
+
+worldX = 100
+
+allora tutto il mondo viene disegnato:
+
+100 pixel più a sinistra
+
+quindi sembra che:
+
+la camera si sia spostata a destra
+Come si centra lo spawn
+
+Hai:
+
+fini[0]
+fini[1]
+
+che sono coordinate tile.
+
+Convertile in coordinate mondo.
+
+Coordinate mondo dello spawn
+int startX = fini[0] * dimensioneImmagine;
+
+int startY =
+        dimensioneImmagine *
+        (labirinto.length - fini[1])
+        - dimensioneImmagine;
+Centro dello schermo
+int centerX = Gdx.graphics.getWidth() / 2;
+int centerY = Gdx.graphics.getHeight() / 2;
+Camera offset corretto
+worldX = startX - centerX + dimensioneImmagine / 2;
+worldY = startY - centerY + dimensioneImmagine / 2;
+Perché il + dimensioneImmagine/2 ?
+
+Perché:
+
+startX/startY
+sono l’angolo della tile
+tu vuoi il centro della tile
+Risultato finale
+
+La tile iniziale apparirà esattamente:
+
+al centro dello schermo
+
+mentre:
+
+il mondo viene traslato attorno ad essa
+Draw corretto
+Texture
+batch.draw(
+    labirintoImage.get(labirinto[i][j]),
+    x - worldX,
+    y - worldY,
+    d,
+    d
+);
+Collisioni debug
+
+Anche loro:
+
+shape.rect(
+    rect.x - worldX,
+    rect.y - worldY,
+    rect.width,
+    rect.height
+);
+IMPORTANTISSIMO
+
+Ora hai finalmente separato:
+
+WORLD COORDINATES
+
+Coordinate vere del labirinto.
+
+CAMERA OFFSET
+
+worldX/worldY
+
+SCREEN COORDINATES
+
+Dove viene disegnato tutto.
+
+Questo è il pattern corretto nei giochi 2D
+drawX = worldX - cameraX
+drawY = worldY - cameraY
+
+sempre.
+ */
     private void draw(){
         ScreenUtils.clear(0f, 1f, 0f, 1f);
         batch.begin();
+
         for (int i = 0; i < labirinto.length; i++) {
             for (int j = 0; j < labirinto[i].length; j++) {
+                int x =dimensioneImmagine*i -worldX;
+                int y=dimensioneImmagine*(labirinto[i].length-j)-dimensioneImmagine -worldY;
+                int d=dimensioneImmagine;
                 //System.out.println(impostaDimensioneImmagine);
                 //batch.begin();
                 //batch.draw(labirintoImage.get(labirinto[i][j]),impostaDimensioneImmagine*i,impostaDimensioneImmagine*(labirinto[i].length-j)-impostaDimensioneImmagine,impostaDimensioneImmagine,impostaDimensioneImmagine);
-                batch.draw(labirintoImage.get(labirinto[i][j]),dimensioneImmagine*i,dimensioneImmagine*(labirinto[i].length-j)-dimensioneImmagine,dimensioneImmagine,dimensioneImmagine);
+                batch.draw(labirintoImage.get(labirinto[i][j]),x,y,d,d);
+                collisioni[i][j] = new Collisioni(x,y,d,50/2,labirinto[i][j]);
+
                 //batch.end();
 
 
@@ -120,7 +237,19 @@ public class MainGame extends ApplicationAdapter {
             }
         }
         //batch.draw(image, 140, 210);
+
         batch.end();
+
+        shape.begin(ShapeRenderer.ShapeType.Filled);
+        for (int i = 0; i < labirinto.length; i++) {
+            for (int j = 0; j < labirinto[i].length; j++) {
+                int x = dimensioneImmagine * i;
+                int y = dimensioneImmagine * (labirinto[i].length - j) - dimensioneImmagine;
+                int d = dimensioneImmagine;
+                collisioni[i][j].testCollisioni(shape);
+            }
+        }
+        shape.end();
     }
 
 
@@ -150,11 +279,18 @@ class Collisioni{
         this.y=y;
         this.width=width;
         this.whiteSpace = whiteSpace;
-        blackSpace=(width-whiteSpace)/2;
+        blackSpace=Math.round((width-whiteSpace)/2f);
         this.id = id;
         directions = LabirintoDFS.direzioniImage.get(id);
         collisioni =new ArrayList<>();
         popola();
+    }
+
+    public void testCollisioni(ShapeRenderer shape){
+        shape.setColor(Color.BLUE);
+        for (Rectangle rect : collisioni){
+            shape.rect(rect.x, rect.y, rect.width,rect.height);
+        }
     }
 
     private void popola() {
@@ -174,6 +310,10 @@ class Collisioni{
         if (!directions[3]){
             collisioni.add(new Rectangle(x,y+blackSpace,blackSpace,whiteSpace));
         }
+    }
+
+    public ArrayList<Rectangle> getCollisioni() {
+        return collisioni;
     }
 }
 
