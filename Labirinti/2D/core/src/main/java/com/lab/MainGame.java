@@ -39,6 +39,8 @@ public class MainGame extends ApplicationAdapter {
 
     private int worldX;
     private int worldY;
+    private int centerX;
+    private int centerY;
 
 
     private int impostaDimensioneImmagine;
@@ -78,15 +80,18 @@ public class MainGame extends ApplicationAdapter {
         screenHeight= Gdx.graphics.getHeight();
         //impostaDimensioneImmagine=(int)Math.ceil((double)screenHeight/ labirinto.length);
 
-        worldX=fini[0]*dimensioneImmagine;
-        worldY= (labirinto.length- fini[1])*dimensioneImmagine -dimensioneImmagine;
 
+        centerX=Gdx.graphics.getWidth()/2;
+        centerY=Gdx.graphics.getHeight()/2;
+        spawn();
     }
 
     @Override
     public void render() {
-
         draw();
+    }
+    private void fine(){
+
     }
 
     private void event(){
@@ -101,112 +106,10 @@ public class MainGame extends ApplicationAdapter {
             bufferEvento=4;
         }
     }
-/*
-Quindi worldX/worldY devono essere offset della mappa
-
-Nel draw:
-
-INVECE di:
-
-batch.draw(texture, x, y, d, d);
-
-devi fare:
-
-batch.draw(texture, x - worldX, y - worldY, d, d);
-Quello è il camera offset
-
-Se:
-
-worldX = 100
-
-allora tutto il mondo viene disegnato:
-
-100 pixel più a sinistra
-
-quindi sembra che:
-
-la camera si sia spostata a destra
-Come si centra lo spawn
-
-Hai:
-
-fini[0]
-fini[1]
-
-che sono coordinate tile.
-
-Convertile in coordinate mondo.
-
-Coordinate mondo dello spawn
-int startX = fini[0] * dimensioneImmagine;
-
-int startY =
-        dimensioneImmagine *
-        (labirinto.length - fini[1])
-        - dimensioneImmagine;
-Centro dello schermo
-int centerX = Gdx.graphics.getWidth() / 2;
-int centerY = Gdx.graphics.getHeight() / 2;
-Camera offset corretto
-worldX = startX - centerX + dimensioneImmagine / 2;
-worldY = startY - centerY + dimensioneImmagine / 2;
-Perché il + dimensioneImmagine/2 ?
-
-Perché:
-
-startX/startY
-sono l’angolo della tile
-tu vuoi il centro della tile
-Risultato finale
-
-La tile iniziale apparirà esattamente:
-
-al centro dello schermo
-
-mentre:
-
-il mondo viene traslato attorno ad essa
-Draw corretto
-Texture
-batch.draw(
-    labirintoImage.get(labirinto[i][j]),
-    x - worldX,
-    y - worldY,
-    d,
-    d
-);
-Collisioni debug
-
-Anche loro:
-
-shape.rect(
-    rect.x - worldX,
-    rect.y - worldY,
-    rect.width,
-    rect.height
-);
-IMPORTANTISSIMO
-
-Ora hai finalmente separato:
-
-WORLD COORDINATES
-
-Coordinate vere del labirinto.
-
-CAMERA OFFSET
-
-worldX/worldY
-
-SCREEN COORDINATES
-
-Dove viene disegnato tutto.
-
-Questo è il pattern corretto nei giochi 2D
-drawX = worldX - cameraX
-drawY = worldY - cameraY
-
-sempre.
- */
+    private void spawn(){
+        worldX=fini[0]*dimensioneImmagine-centerX+dimensioneImmagine/2;
+        worldY= (labirinto.length- fini[1])*dimensioneImmagine -dimensioneImmagine-centerY+dimensioneImmagine/2;
+    }
     private void draw(){
         ScreenUtils.clear(0f, 1f, 0f, 1f);
         batch.begin();
@@ -239,7 +142,7 @@ sempre.
         //batch.draw(image, 140, 210);
 
         batch.end();
-
+        /*
         shape.begin(ShapeRenderer.ShapeType.Filled);
         for (int i = 0; i < labirinto.length; i++) {
             for (int j = 0; j < labirinto[i].length; j++) {
@@ -249,7 +152,7 @@ sempre.
                 collisioni[i][j].testCollisioni(shape);
             }
         }
-        shape.end();
+        shape.end();*/
     }
 
 
