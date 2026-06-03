@@ -20,7 +20,8 @@ import java.util.*;
 public class MainGame extends ApplicationAdapter {
     private SpriteBatch batch;
     private ShapeRenderer shape;
-    private Texture image;
+    private Texture stone;
+    private Texture ladder;
     private Map<Integer,Texture> labirintoImage;
     private ConnectLabirinto connect;
     private Collisioni[][] collisioni;
@@ -29,18 +30,21 @@ public class MainGame extends ApplicationAdapter {
     private int[] cameraPosition;
     private int[] fini;
 
-    private int bufferEvento;
+    private int[] bufferEvento = new int[2];
 
+    private int[][] personaggio;
+    private Rectangle collisioniPersonaggio;
 
-
-    private int dimensioneImmagine = 64;
+    private int dimensioneImmagine = 256;
     private int screenHeight;
-    private int dimensioneLato =15;
+    private int dimensioneLato =5;
+    private int velocita = 5;
 
     private int worldX;
     private int worldY;
     private int centerX;
     private int centerY;
+    private int[] posizione;
 
 
     private int impostaDimensioneImmagine;
@@ -52,7 +56,8 @@ public class MainGame extends ApplicationAdapter {
 
         batch = new SpriteBatch();
         shape = new ShapeRenderer();
-        image = new Texture("libgdx.png");
+        stone = new Texture("stone.png");
+        ladder = new Texture("ladder.png");
         labirintoImage.put(0,new Texture("pieno.png"));//.get(chiave)
         labirintoImage.put(1,new Texture("fineAlto.png"));
         labirintoImage.put(2,new Texture("fineDestra.png"));
@@ -73,45 +78,137 @@ public class MainGame extends ApplicationAdapter {
 
 
 
-        connect.setLabirinto(dimensioneLato);
-        labirinto = connect.getLabirinto();
-        collisioni = new Collisioni[dimensioneLato][dimensioneLato];
-        fini = connect.getFini();
+
         screenHeight= Gdx.graphics.getHeight();
         //impostaDimensioneImmagine=(int)Math.ceil((double)screenHeight/ labirinto.length);
 
 
         centerX=Gdx.graphics.getWidth()/2;
         centerY=Gdx.graphics.getHeight()/2;
+        personaggio = new int[][]{{centerX- stone.getWidth()/2,centerY- stone.getHeight()/2},{stone.getWidth(), stone.getHeight()}};
+        collisioniPersonaggio = new Rectangle(personaggio[0][0],personaggio[0][1],personaggio[1][0],personaggio[1][1]);
         spawn();
     }
 
     @Override
     public void render() {
+        event();
+        updateCollisioni();
         draw();
+        fine();
     }
     private void fine(){
+        if (fini[2] == posizione[0] && fini[3] ==posizione[1]){
+            dimensioneLato+=2;
+            spawn();
+        }
+    }
+    private boolean collide(){
+        for (int i = posizione[0]-1; i <= posizione[0]+1; i++) {
+            for (int j = posizione[1]-1; j <= posizione[1]+1; j++) {
+                if (i<0||j<0||i>=collisioni.length||j>=collisioni[i].length){
+                    continue;
+                }
+                for (Rectangle rect : collisioni[i][j].getCollisioni()){
+                    if (collisioniPersonaggio.overlaps(rect)){
+                        return true;
+                    }
+                }
 
+            }
+
+        }
+        return false;
     }
 
     private void event(){
+        int spostamento =velocita;
+        for (int i = 0; i < bufferEvento.length; i++) {
+            switch (bufferEvento[i]){
+                case 1:
+                    worldY+=spostamento;
+                    updateCollisioni();
+                    if (collide()){
+                        worldY-=spostamento;
+                    }
+                    break;
+                case 2:
+                    worldX+=spostamento;
+                    updateCollisioni();
+                    if (collide()){
+                        worldX-=spostamento;
+                    }
+                    break;
+                case 3:
+                    worldY-=spostamento;
+                    updateCollisioni();
+                    if (collide()){
+                        worldY+=spostamento;
+                    }
+                    break;
+                case 4:
+                    worldX-=spostamento;
+                    updateCollisioni();
+                    if (collide()){
+                        worldX+=spostamento;
+                    }
+                    break;
+            }
+            bufferEvento[i]=0;
+        }
+
+
         if (Gdx.input.isKeyPressed(Input.Keys.W)){
-            bufferEvento=1;
+            bufferEvento[0]=1;
         } else if (Gdx.input.isKeyPressed(Input.Keys.S)) {
-            bufferEvento=3;
+            bufferEvento[0]=3;
         }
         if (Gdx.input.isKeyPressed(Input.Keys.D)){
-            bufferEvento=2;
+            bufferEvento[1]=2;
         } else if (Gdx.input.isKeyPressed(Input.Keys.A)) {
-            bufferEvento=4;
+            bufferEvento[1]=4;
         }
     }
     private void spawn(){
+        connect.setLabirinto(dimensioneLato);
+        labirinto = connect.getLabirinto();
+        collisioni = new Collisioni[dimensioneLato][dimensioneLato];
+        fini = connect.getFini();
+        posizione = new int[]{fini[0],fini[1]};
         worldX=fini[0]*dimensioneImmagine-centerX+dimensioneImmagine/2;
         worldY= (labirinto.length- fini[1])*dimensioneImmagine -dimensioneImmagine-centerY+dimensioneImmagine/2;
     }
+    private void updateCollisioni(){
+        for (int i = 0; i < labirinto.length; i++) {
+            for (int j = 0; j < labirinto[i].length; j++) {
+                int x = dimensioneImmagine * i - worldX;
+                int y = dimensioneImmagine * (labirinto[i].length - j) - dimensioneImmagine - worldY;
+                int d = dimensioneImmagine;
+                collisioni[i][j] = new Collisioni(x, y, d, 256 / 2, labirinto[i][j]);
+
+            }
+        }
+        /*
+        shape.begin(ShapeRenderer.ShapeType.Filled);
+        for (int i = 0; i < labirinto.length; i++) {
+            for (int j = 0; j < labirinto[i].length; j++) {
+                int x = dimensioneImmagine * i;
+                int y = dimensioneImmagine * (labirinto[i].length - j) - dimensioneImmagine;
+                int d = dimensioneImmagine;
+                collisioni[i][j].testCollisioni(shape);
+            }
+        }
+        shape.end();*/
+    }
     private void draw(){
         ScreenUtils.clear(0f, 1f, 0f, 1f);
+
+        posizione[0]=(personaggio[0][0]+worldX)/dimensioneImmagine;
+        posizione[1]=labirinto.length-1-(personaggio[0][1]+worldY)/dimensioneImmagine;
+
+
+
+
         batch.begin();
 
         for (int i = 0; i < labirinto.length; i++) {
@@ -123,7 +220,15 @@ public class MainGame extends ApplicationAdapter {
                 //batch.begin();
                 //batch.draw(labirintoImage.get(labirinto[i][j]),impostaDimensioneImmagine*i,impostaDimensioneImmagine*(labirinto[i].length-j)-impostaDimensioneImmagine,impostaDimensioneImmagine,impostaDimensioneImmagine);
                 batch.draw(labirintoImage.get(labirinto[i][j]),x,y,d,d);
-                collisioni[i][j] = new Collisioni(x,y,d,50/2,labirinto[i][j]);
+                batch.draw(stone,personaggio[0][0],personaggio[0][1],personaggio[1][0],personaggio[1][1]);
+
+
+
+
+
+
+
+                //collisioni[i][j] = new Collisioni(x,y,d,256/2,labirinto[i][j]);
 
                 //batch.end();
 
@@ -131,12 +236,13 @@ public class MainGame extends ApplicationAdapter {
 
 
 
-                /*if ((fini[0] == i && fini[1] ==j) ||(fini[2] == i && fini[3] ==j)){
-                    shape.begin();
-                    shape.setColor(0,1,0,1);
-                    shape.rect(dimensioneImmagine*i+(int)(dimensioneImmagine-dimensioneInizio)/2,dimensioneImmagine*(labirinto[i].length-j)-dimensioneImmagine+(int)(dimensioneImmagine-dimensioneInizio)/2,dimensioneInizio,dimensioneInizio);
-                    shape.end();
-                }*/
+
+                if (fini[0] == i && fini[1] ==j){
+                    batch.draw(ladder,x+dimensioneImmagine/2-24,y+dimensioneImmagine/2-24,48,48,0,48,48,48,false,false);
+                }
+                if (fini[2] == i && fini[3] ==j){
+                    batch.draw(ladder,x+dimensioneImmagine/2-24,y+dimensioneImmagine/2-24,48,48,0,0,48,48,false,false);
+                }
             }
         }
         //batch.draw(image, 140, 210);
@@ -153,6 +259,9 @@ public class MainGame extends ApplicationAdapter {
             }
         }
         shape.end();*/
+
+
+
     }
 
 
@@ -162,7 +271,7 @@ public class MainGame extends ApplicationAdapter {
     @Override
     public void dispose() {
         batch.dispose();
-        image.dispose();
+        stone.dispose();
     }
 }
 
