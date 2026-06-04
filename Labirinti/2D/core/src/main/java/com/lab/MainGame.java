@@ -3,28 +3,47 @@ package com.lab;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
+import com.badlogic.gdx.audio.Music;
+import com.badlogic.gdx.audio.Sound;
+import com.badlogic.gdx.controllers.Controller;
+import com.badlogic.gdx.controllers.Controllers;
+import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.ScreenUtils;
 
+
 import javax.swing.*;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.lang.ModuleLayer;
 import java.util.*;
 
-/** {@link com.badlogic.gdx.ApplicationListener} implementation shared by all platforms. */
+/** {@link com.badlogic.gdx.ApplicationListener} implementation shared by all platforms.
+ * Classe principale del gioco.
+ */
+
+/*
+Crediti:
+Protagonista e scala a : https://www.pixilart.com/
+Suoni: https://www.zapsplat.com/
+Controller: https://github.com/libgdx/gdx-controllers
+R/W: https://libgdx.com/wiki/file-handling
+Capire errori, e aiuto nell imparare nuovi concetti: Copilot
+ */
 public class MainGame extends ApplicationAdapter {
     private SpriteBatch batch;
     private ShapeRenderer shape;
     private Texture stone;
     private Texture ladder;
     private Map<Integer,Texture> labirintoImage;
-    private ConnectLabirinto connect;
-    private Collisioni[][] collisioni;
+    private ConnectLabirintoS connect;
+    private CollisioniBase[][] collisioni;
 
     private int[][] labirinto;
     private int[] cameraPosition;
@@ -33,11 +52,13 @@ public class MainGame extends ApplicationAdapter {
     private int[] bufferEvento = new int[2];
 
     private int[][] personaggio;
-    private Rectangle collisioniPersonaggio;
+    private CollisioniBase collisioniPersonaggio;
 
     private int dimensioneImmagine = 256;
+    private int screenWidth;
     private int screenHeight;
     private int dimensioneLato =5;
+    private int best;
     private int velocita = 5;
 
     private int worldX;
@@ -46,14 +67,28 @@ public class MainGame extends ApplicationAdapter {
     private int centerY;
     private int[] posizione;
 
+    private boolean mostraMessaggio = false;
+    private String testo ="";
+    private float timer =0;
+    private float durata =2f;
+    private BitmapFont font;
 
-    private int impostaDimensioneImmagine;
+    private Music music;
+    private ArrayList<Sound> effetti;
+    private float tempoDisponibile=0;
+    private float effettoDurata =0.5f;
+
+    private Controller c;
+    private boolean esiste = false;
+
+    private FileHandle file;
 
     @Override
     public void create() {
-        connect = new ConnectLabirinto();
+        connect = new ConnectLabirintoS();
         labirintoImage = new HashMap<>();
-
+        music = Gdx.audio.newMusic(Gdx.files.internal("background.mp3"));
+        font = new BitmapFont();
         batch = new SpriteBatch();
         shape = new ShapeRenderer();
         stone = new Texture("stone.png");
@@ -74,35 +109,122 @@ public class MainGame extends ApplicationAdapter {
         labirintoImage.put(13,new Texture("incrocio4.png"));
         labirintoImage.put(14,new Texture("dirittoVerticale.png"));
         labirintoImage.put(15,new Texture("dirittoOrizzontale.png"));
+        effetti = new ArrayList<>();
 
+        for (int i = 0; i < 7; i++) {
+            effetti.add(Gdx.audio.newSound(Gdx.files.internal((i+1)+".wav")));
+        }
 
+        file = Gdx.files.local("punteggio.txt");
+        try {
+            if (file.exists()) {
+                best = Integer.parseInt(file.readString());
+            }else {
+                best =0;
+            }
+        }catch (Exception e){
+            best =0;
+            System.out.println("Errore caricamento file");
+        }
 
-
-
+        music.setLooping(true);
+        music.play();
         screenHeight= Gdx.graphics.getHeight();
-        //impostaDimensioneImmagine=(int)Math.ceil((double)screenHeight/ labirinto.length);
-
-
+        screenWidth = Gdx.graphics.getWidth();
         centerX=Gdx.graphics.getWidth()/2;
         centerY=Gdx.graphics.getHeight()/2;
         personaggio = new int[][]{{centerX- stone.getWidth()/2,centerY- stone.getHeight()/2},{stone.getWidth(), stone.getHeight()}};
-        collisioniPersonaggio = new Rectangle(personaggio[0][0],personaggio[0][1],personaggio[1][0],personaggio[1][1]);
+        collisioniPersonaggio = new CollisioniPersonaggio(personaggio[0][0],personaggio[0][1],personaggio[1][0],personaggio[1][1]);
+        font.getData().setScale(3);
+
+        if (Controllers.getControllers().size ==0){//Controlla solo all'avvio se è presente un controller
+            System.out.println("Nessun joystick collegato");
+        }
+        else {
+            esiste = true;
+            c = Controllers.getControllers().first();
+        }
         spawn();
     }
 
     @Override
     public void render() {
-        event();
-        updateCollisioni();
-        draw();
-        fine();
+        try {
+            event();
+        } catch (Exception e) {
+            System.out.println("Eccezzione trovata in eventi"+e.toString());
+        }
+        try{
+            updateCollisioni();
+        } catch (Exception e) {
+            System.out.println("Eccezzione trovata in collisioni"+e.toString());
+        }
+        try {
+            draw();
+        }
+         catch (Exception e) {
+            System.out.println("Eccezzione trovata in disegno"+e.toString());
+        }
+        try {
+            fine();
+        }
+          catch (Exception e) {
+            System.out.println("Eccezzione trovata in fine"+e.toString());
+        }
+
+        if (mostraMessaggio){
+            timer -= Gdx.graphics.getDeltaTime();
+            if (timer <=0){
+                mostraMessaggio = false;
+            }
+        }
+        tempoDisponibile-=Gdx.graphics.getDeltaTime();
     }
+
+    /**
+     * Aggiorna il file del punteggio.
+     * @param punteggio valore da salvare
+     */
+    private void aggiornaFile(int punteggio){
+        if (punteggio>best){
+            file.writeString(String.valueOf(punteggio),false);
+        }
+    }
+
+    /**
+     * Controlla se il giocatore ha raggiunto l'uscita.
+     */
     private void fine(){
         if (fini[2] == posizione[0] && fini[3] ==posizione[1]){
             dimensioneLato+=2;
             spawn();
         }
     }
+
+    /** Riproduce un effetto sonoro con cooldown. */
+    private void playEffetto(){
+        if (tempoDisponibile>0){
+            return;
+        }
+
+        long id =effetti.get((int)Math.random()*effetti.size()).play(1f);
+        tempoDisponibile=effettoDurata;
+    }
+
+    /**
+     * Mostra un messaggio temporaneo a schermo.
+     * @param testo testo da mostrare
+     */
+    private void messaggio(String testo){
+        mostraMessaggio = true;
+        this.testo=testo;
+        timer=durata;
+    }
+
+    /**
+     * Controlla collisioni tra giocatore e celle vicine.
+     * @return true se collide
+     */
     private boolean collide(){
         for (int i = posizione[0]-1; i <= posizione[0]+1; i++) {
             for (int j = posizione[1]-1; j <= posizione[1]+1; j++) {
@@ -110,7 +232,7 @@ public class MainGame extends ApplicationAdapter {
                     continue;
                 }
                 for (Rectangle rect : collisioni[i][j].getCollisioni()){
-                    if (collisioniPersonaggio.overlaps(rect)){
+                    if (collisioniPersonaggio.getCollisioni().get(0).overlaps(rect)){
                         return true;
                     }
                 }
@@ -121,6 +243,7 @@ public class MainGame extends ApplicationAdapter {
         return false;
     }
 
+    /** Gestisce input da tastiera o controller. */
     private void event(){
         int spostamento =velocita;
         for (int i = 0; i < bufferEvento.length; i++) {
@@ -131,6 +254,7 @@ public class MainGame extends ApplicationAdapter {
                     if (collide()){
                         worldY-=spostamento;
                     }
+                    playEffetto();
                     break;
                 case 2:
                     worldX+=spostamento;
@@ -138,6 +262,7 @@ public class MainGame extends ApplicationAdapter {
                     if (collide()){
                         worldX-=spostamento;
                     }
+                    playEffetto();
                     break;
                 case 3:
                     worldY-=spostamento;
@@ -145,6 +270,7 @@ public class MainGame extends ApplicationAdapter {
                     if (collide()){
                         worldY+=spostamento;
                     }
+                    playEffetto();
                     break;
                 case 4:
                     worldX-=spostamento;
@@ -152,39 +278,64 @@ public class MainGame extends ApplicationAdapter {
                     if (collide()){
                         worldX+=spostamento;
                     }
+                    playEffetto();
                     break;
             }
             bufferEvento[i]=0;
         }
 
+        if (esiste){
+            float x=c.getAxis(0);
+            float y=c.getAxis(1);
+            System.out.println(x+" "+y);
 
-        if (Gdx.input.isKeyPressed(Input.Keys.W)){
-            bufferEvento[0]=1;
-        } else if (Gdx.input.isKeyPressed(Input.Keys.S)) {
-            bufferEvento[0]=3;
-        }
-        if (Gdx.input.isKeyPressed(Input.Keys.D)){
-            bufferEvento[1]=2;
-        } else if (Gdx.input.isKeyPressed(Input.Keys.A)) {
-            bufferEvento[1]=4;
+            if (y<-0.5) {
+                bufferEvento[0] = 1;
+            } else if (y>0.5) {
+                bufferEvento[0] = 3;
+            }
+            if (x>0.5) {
+                bufferEvento[1] = 2;
+            } else if (x<-0.5) {
+                bufferEvento[1] = 4;
+            }
+
+        }else {
+            if (Gdx.input.isKeyPressed(Input.Keys.W)) {
+                bufferEvento[0] = 1;
+            } else if (Gdx.input.isKeyPressed(Input.Keys.S)) {
+                bufferEvento[0] = 3;
+            }
+            if (Gdx.input.isKeyPressed(Input.Keys.D)) {
+                bufferEvento[1] = 2;
+            } else if (Gdx.input.isKeyPressed(Input.Keys.A)) {
+                bufferEvento[1] = 4;
+            }
         }
     }
+
+    /** Genera un nuovo livello e resetta posizione e dati. */
     private void spawn(){
+        int punteggio=(int)(Math.floor((dimensioneLato-4)/2)+1);
+        aggiornaFile(punteggio);
+        messaggio("Benvenuto nel livello : "+punteggio+"\nMigliore di sempre: "+best);
         connect.setLabirinto(dimensioneLato);
         labirinto = connect.getLabirinto();
-        collisioni = new Collisioni[dimensioneLato][dimensioneLato];
+        collisioni = new CollisioniBase[dimensioneLato][dimensioneLato];
         fini = connect.getFini();
         posizione = new int[]{fini[0],fini[1]};
         worldX=fini[0]*dimensioneImmagine-centerX+dimensioneImmagine/2;
         worldY= (labirinto.length- fini[1])*dimensioneImmagine -dimensioneImmagine-centerY+dimensioneImmagine/2;
     }
+
+    /** Aggiorna le collisioni delle celle in base alla camera. */
     private void updateCollisioni(){
         for (int i = 0; i < labirinto.length; i++) {
             for (int j = 0; j < labirinto[i].length; j++) {
                 int x = dimensioneImmagine * i - worldX;
                 int y = dimensioneImmagine * (labirinto[i].length - j) - dimensioneImmagine - worldY;
                 int d = dimensioneImmagine;
-                collisioni[i][j] = new Collisioni(x, y, d, 256 / 2, labirinto[i][j]);
+                collisioni[i][j] = new CollisioniS(x, y, d,d, 256 / 2, labirinto[i][j]);
 
             }
         }
@@ -200,14 +351,13 @@ public class MainGame extends ApplicationAdapter {
         }
         shape.end();*/
     }
+
+    /** Disegna labirinto, player e messaggi. */
     private void draw(){
-        ScreenUtils.clear(0f, 1f, 0f, 1f);
+        ScreenUtils.clear(0f, 0f, 0f, 1f);
 
         posizione[0]=(personaggio[0][0]+worldX)/dimensioneImmagine;
         posizione[1]=labirinto.length-1-(personaggio[0][1]+worldY)/dimensioneImmagine;
-
-
-
 
         batch.begin();
 
@@ -222,21 +372,9 @@ public class MainGame extends ApplicationAdapter {
                 batch.draw(labirintoImage.get(labirinto[i][j]),x,y,d,d);
                 batch.draw(stone,personaggio[0][0],personaggio[0][1],personaggio[1][0],personaggio[1][1]);
 
-
-
-
-
-
-
                 //collisioni[i][j] = new Collisioni(x,y,d,256/2,labirinto[i][j]);
 
                 //batch.end();
-
-
-
-
-
-
                 if (fini[0] == i && fini[1] ==j){
                     batch.draw(ladder,x+dimensioneImmagine/2-24,y+dimensioneImmagine/2-24,48,48,0,48,48,48,false,false);
                 }
@@ -245,318 +383,31 @@ public class MainGame extends ApplicationAdapter {
                 }
             }
         }
-        //batch.draw(image, 140, 210);
 
         batch.end();
-        /*
-        shape.begin(ShapeRenderer.ShapeType.Filled);
-        for (int i = 0; i < labirinto.length; i++) {
-            for (int j = 0; j < labirinto[i].length; j++) {
-                int x = dimensioneImmagine * i;
-                int y = dimensioneImmagine * (labirinto[i].length - j) - dimensioneImmagine;
-                int d = dimensioneImmagine;
-                collisioni[i][j].testCollisioni(shape);
-            }
+
+        if (mostraMessaggio){
+            ScreenUtils.clear(0f, 0f, 0f, 1f);
+            batch.begin();
+            font.draw(batch,testo,screenWidth/2f - font.getRegion().getRegionWidth(),screenHeight/2f);
+            batch.end();
+
         }
-        shape.end();*/
-
-
-
     }
-
-
-
-
 
     @Override
     public void dispose() {
         batch.dispose();
+        shape.dispose();
         stone.dispose();
+        ladder.dispose();
+        for (Texture t: labirintoImage.values()){
+            t.dispose();
+        }
+        font.dispose();
+        music.dispose();
+        for (Sound s: effetti){
+            s.dispose();
+        }
     }
 }
-
-class Collisioni{
-    private int x;
-    private int y;
-    private int width;
-    private int whiteSpace;
-    private int blackSpace;
-    private int id;
-    private boolean[] directions;
-
-    private ArrayList<Rectangle> collisioni;
-
-    public Collisioni (int x, int y, int width, int whiteSpace, int id){
-        this.x=x;
-        this.y=y;
-        this.width=width;
-        this.whiteSpace = whiteSpace;
-        blackSpace=Math.round((width-whiteSpace)/2f);
-        this.id = id;
-        directions = LabirintoDFS.direzioniImage.get(id);
-        collisioni =new ArrayList<>();
-        popola();
-    }
-
-    public void testCollisioni(ShapeRenderer shape){
-        shape.setColor(Color.BLUE);
-        for (Rectangle rect : collisioni){
-            shape.rect(rect.x, rect.y, rect.width,rect.height);
-        }
-    }
-
-    private void popola() {
-        collisioni.add(new Rectangle(x,y,blackSpace,blackSpace));
-        collisioni.add(new Rectangle(x+width-blackSpace,y,blackSpace,blackSpace));
-        collisioni.add(new Rectangle(x,y+width-blackSpace,blackSpace,blackSpace));
-        collisioni.add(new Rectangle(x+width-blackSpace,y+width-blackSpace,blackSpace,blackSpace));
-        if (!directions[0]){
-            collisioni.add(new Rectangle(x+blackSpace,y+width-blackSpace,whiteSpace,blackSpace));
-        }
-        if (!directions[1]){
-            collisioni.add(new Rectangle(x+blackSpace+whiteSpace,y+blackSpace,blackSpace,whiteSpace));
-        }
-        if (!directions[2]){
-            collisioni.add(new Rectangle(x+blackSpace,y,whiteSpace,blackSpace));
-        }
-        if (!directions[3]){
-            collisioni.add(new Rectangle(x,y+blackSpace,blackSpace,whiteSpace));
-        }
-    }
-
-    public ArrayList<Rectangle> getCollisioni() {
-        return collisioni;
-    }
-}
-
-class ConnectLabirinto{
-    private int[][] labirinto;
-    private int[] fini;
-
-    public void setLabirinto(int dimensione) {
-        this.labirinto = LabirintoDFS.ottieniLabirinto(dimensione);
-        this.fini = LabirintoDFS.completa();
-    }
-
-
-
-    public int[][] getLabirinto() {
-        return labirinto;
-    }
-
-    public int[] getFini() {
-        return fini;
-    }
-
-
-}
-
-class LabirintoDFS {
-    static int size = 21;
-    static int[][] labirinto;
-    static Random rand = new Random();
-    static Scanner input = new Scanner(System.in);
-    static ArrayList<int[]> finali;
-    static ArrayList<boolean[]> direzioniImage = new ArrayList<>();
-
-    static void prepara() {
-        labirinto = new int[size][size];
-        direzioniImage.clear();
-        direzioniImage.add(new boolean[]{false, false, false, false});
-        direzioniImage.add(new boolean[]{true, false, false, false});
-        direzioniImage.add(new boolean[]{false, true, false, false});
-        direzioniImage.add(new boolean[]{false, false, true, false});
-        direzioniImage.add(new boolean[]{false, false, false, true});
-        direzioniImage.add(new boolean[]{true, true, false, false});
-        direzioniImage.add(new boolean[]{false, true, true, false});
-        direzioniImage.add(new boolean[]{false, false, true, true});
-        direzioniImage.add(new boolean[]{true, false, false, true});
-        direzioniImage.add(new boolean[]{true, true, false, true});
-        direzioniImage.add(new boolean[]{true, true, true, false});
-        direzioniImage.add(new boolean[]{false, true, true, true});
-        direzioniImage.add(new boolean[]{true, false, true, true});
-        direzioniImage.add(new boolean[]{true, true, true, true});
-        direzioniImage.add(new boolean[]{true, false, true, false});
-        direzioniImage.add(new boolean[]{false, true, false, true});
-    }
-
-
-    public static int[][] ottieniLabirinto(int dimensione) {
-        if (dimensione >0){
-            size = dimensione;
-        }
-        prepara();
-        inizializzaGriglia();
-
-
-
-        genera(1, 1);
-        analizza();
-
-        stampaLabirinto();
-        return labirinto;
-
-    }
-
-
-
-    // Inizializza tutta la griglia con muri (0)
-    static void inizializzaGriglia() {
-        for (int i = 0; i < size; i++) {
-            Arrays.fill(labirinto[i], 0);
-        }
-        finali = new ArrayList<>();
-    }
-
-
-    // Algoritmo DFS con backtracking
-    static void genera(int x, int y) {
-        labirinto[x][y] = 1;
-
-
-
-        int[] dx = {0, 0, -2, 2}; // sinistra, destra, su, giù
-        int[] dy = {-2, 2, 0, 0};
-        Integer[] direzioni = {0, 1, 2, 3};
-        Collections.shuffle(Arrays.asList(direzioni));
-
-        for (int dir : direzioni) {
-
-            int nx = x + dx[dir];
-            int ny = y + dy[dir];
-            if (èValida(nx, ny)) {
-                labirinto[x + dx[dir] / 2][y + dy[dir] / 2] = 1; // scava muro intermedio
-
-                //stampaLabirinto();
-
-
-                genera(nx, ny); // ricorsione
-
-                //stampaLabirinto();
-
-
-
-            }
-        }
-    }
-    static int[] completa(){
-
-        finali.clear();
-
-        for (int i = 0; i < size; i++) {
-            for (int j = 0; j < size; j++) {
-                if (labirinto[i][j] >=1 && labirinto[i][j]<=4) {
-                    finali.add(new int[]{i, j});
-                }
-            }
-        }
-        int[] start= finali.get(rand.nextInt(finali.size()));
-        int[] end;
-
-
-        do {
-            end = finali.get(rand.nextInt(finali.size()));
-        }while (start == end);
-        //System.out.println(start +""+ end);
-
-        return new int[]{start[0],start[1],end[0],end[1]};
-    }
-    static void analizza(){
-        //finali.clear();
-
-        for (int i = 0; i < size; i++) {
-            for (int j = 0; j < size; j++) {
-                int value = labirinto[i][j];
-                //int count =0;
-                if (value != 0){
-                    int[] dx = {0, 0, -1, 1}; //  su, giù, sinistra, destra
-                    int[] dy = {-1, 1, 0, 0};
-                    Integer[] direzioni = {0, 3, 1, 2};// su, destra, giù, sinistra
-                    boolean[] risultati ={false,false,false,false};
-
-
-                    for (int k = 0; k < direzioni.length; k++) {
-                        int dir = direzioni[k];
-                        int nx = i + dx[dir];
-                        int ny = j + dy[dir];
-                        risultati[k]=èlabirinto(nx,ny);
-                    }
-
-
-
-
-                    labirinto[i][j]=definisci(risultati);
-                    //finali.add(new int[]{i,j});
-                }
-            }
-        }
-    }
-
-    static int definisci(boolean[] risultato){
-        for (int i = 0; i < direzioniImage.size(); i++) {
-            if (Arrays.equals(risultato,direzioniImage.get(i))){
-                return i;
-            }
-        }
-        return 100;
-    }
-
-    // Verifica se la cella è valida per scavare
-    static boolean èValida(int x, int y) {
-        return x > 0 && y > 0 && x < size - 1 && y < size - 1 && labirinto[x][y] == 0;
-    }
-    static boolean èlabirinto(int x, int y){
-        try{
-            return labirinto[x][y] != 0;
-        }catch (Exception ex){
-            return false;
-        }
-
-    }
-
-    // Stampa il labirinto in console
-    static void stampaLabirinto() {
-        /*Color muro = Color.WHITE;//0  Bianco
-        Color percorso =Color.GREEN;//2   Verde
-        Color puntoFinale =Color.RED;//1	Rosso
-        Color giunzione=Color.BLUE;//3   Blu
-        Color inizio=Color.VIOLET;//5    Viola
-        Color fine=Color.BLACK;//6 Nero*/
-
-        for (int i = 0; i < size; i++) {
-            for (int j = 0; j < size; j++) {
-                System.out.print(labirinto[j][i]+" \t");
-                /*if(labirinto[i][j] == 0){
-                    System.out.print(muro);
-                }else if (labirinto[i][j] ==1){
-                    System.out.print(puntoFinale);
-                } else if (labirinto[i][j]==2) {
-                    System.out.print(percorso);
-                }else if (labirinto[i][j]==3 ||labirinto[i][j]==4) {
-                    System.out.print(giunzione);
-                }else if (labirinto[i][j]==5) {
-                    System.out.print(inizio);
-                }else {
-                    System.out.print(fine);
-                }*/
-            }
-            System.out.println();
-        }
-        System.out.println();
-    }
-}
-
-/*
-
-
-🟥	Rosso
-🟦	Blu
-🟩	Verde
-🟨	Giallo
-🟧	Arancione
-🟪	Viola
-🟫	Marrone
-⬛	Nero grande
-⬜	Bianco grande
-
-*/

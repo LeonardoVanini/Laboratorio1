@@ -1,0 +1,170 @@
+@startuml
+title Class Diagram - Labirinto Game
+
+skinparam classAttributeIconSize 0
+
+' ===========================
+' CLASSI PRINCIPALI
+' ===========================
+
+class MainGame {
+    - batch : SpriteBatch
+    - shape : ShapeRenderer
+    - stone : Texture
+    - ladder : Texture
+    - labirintoImage : Map<Integer,Texture>
+    - connect : ConnectLabirintoS
+    - collisioni : CollisioniBase[][]
+    - labirinto : int[][]
+    - cameraPosition : int[]
+    - fini : int[]
+    - bufferEvento : int[]
+    - personaggio : int[][]
+    - collisioniPersonaggio : CollisioniBase
+    - dimensioneImmagine : int
+    - screenWidth : int
+    - screenHeight : int
+    - dimensioneLato : int
+    - best : int
+    - velocita : int
+    - worldX : int
+    - worldY : int
+    - centerX : int
+    - centerY : int
+    - posizione : int[]
+    - mostraMessaggio : boolean
+    - testo : String
+    - timer : float
+    - durata : float
+    - font : BitmapFont
+    - music : Music
+    - effetti : ArrayList<Sound>
+    - tempoDisponibile : float
+    - effettoDurata : float
+    - c : Controller
+    - esiste : boolean
+    - file : FileHandle
+    - impostaDimensioneImmagine : int
+    --
+    + create()
+    + render()
+    - aggiornaFile(int)
+    - fine()
+    - playEffetto()
+    - messaggio(String)
+    - collide() : boolean
+    - event()
+    - spawn()
+    - updateCollisioni()
+    - draw()
+    + dispose()
+}
+
+note right of MainGame
+Classe principale del gioco.
+Gestisce input, grafica, collisioni e livelli.
+end note
+
+
+' ===========================
+' COLLISIONI
+' ===========================
+
+abstract class CollisioniBase {
+    # x : int
+    # y : int
+    # width : int
+    # height : int
+    # collisioni : ArrayList<Rectangle>
+    --
+    + CollisioniBase(int,int,int,int)
+    # popola() : void
+    + getCollisioni() : ArrayList<Rectangle>
+}
+
+note right of CollisioniBase
+Classe astratta per gestire collisioni.
+end note
+
+
+class CollisioniPersonaggio {
+    + CollisioniPersonaggio(int,int,int,int)
+    # popola() : void
+}
+
+note right of CollisioniPersonaggio
+Hitbox del personaggio.
+end note
+
+
+class CollisioniS {
+    - whiteSpace : int
+    - blackSpace : int
+    - directions : boolean[]
+    --
+    + CollisioniS(int,int,int,int,int,int)
+    + testCollisioni(ShapeRenderer)
+    # popola() : void
+}
+
+note right of CollisioniS
+Collisioni per una cella del labirinto.
+end note
+
+
+' ===========================
+' LABIRINTO
+' ===========================
+
+class ConnectLabirintoS {
+    - labirinto : int[][]
+    - fini : int[]
+    --
+    + setLabirinto(int)
+    + getLabirinto() : int[][]
+    + getFini() : int[]
+}
+
+note right of ConnectLabirintoS
+Gestisce generazione labirinto e punti start/end.
+end note
+
+
+class LabirintoDFSS {
+    - size : int
+    - labirinto : int[][]
+    - finali : ArrayList<int[]>
+    - direzioniImage : ArrayList<boolean[]>
+    --
+    + ottieniLabirinto(int) : int[][]
+    + completa() : int[]
+    - prepara()
+    - inizializzaGriglia()
+    - genera(int,int)
+    - analizza()
+    - definisci(boolean[]) : int
+    - èValida(int,int) : boolean
+    - èlabirinto(int,int) : boolean
+    - stampaLabirinto()
+}
+
+note right of LabirintoDFSS
+Genera il labirinto con DFS.
+end note
+
+
+' ===========================
+' RELAZIONI
+' ===========================
+
+MainGame --> ConnectLabirintoS
+MainGame --> CollisioniBase
+MainGame --> CollisioniS
+MainGame --> CollisioniPersonaggio
+
+ConnectLabirintoS --> LabirintoDFSS
+
+CollisioniPersonaggio --|> CollisioniBase
+CollisioniS --|> CollisioniBase
+
+@enduml
