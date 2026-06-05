@@ -129,7 +129,7 @@ public class MainGame extends ApplicationAdapter {
 
         music.setLooping(true);
         music.play();
-        screenHeight= Gdx.graphics.getHeight();
+        screenHeight= Gdx.graphics.getHeight();//Il gioco è fatto in modo che se si gioca da telefono, si vede poco, maggiore è la risoluzione, maggiore è la porzione di labirinto visto
         screenWidth = Gdx.graphics.getWidth();
         centerX=Gdx.graphics.getWidth()/2;
         centerY=Gdx.graphics.getHeight()/2;
