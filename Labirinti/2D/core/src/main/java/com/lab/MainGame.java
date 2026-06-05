@@ -287,7 +287,7 @@ public class MainGame extends ApplicationAdapter {
         if (esiste){
             float x=c.getAxis(0);
             float y=c.getAxis(1);
-            System.out.println(x+" "+y);
+            //System.out.println(x+" "+y);
 
             if (y<-0.5) {
                 bufferEvento[0] = 1;
@@ -335,21 +335,10 @@ public class MainGame extends ApplicationAdapter {
                 int x = dimensioneImmagine * i - worldX;
                 int y = dimensioneImmagine * (labirinto[i].length - j) - dimensioneImmagine - worldY;
                 int d = dimensioneImmagine;
-                collisioni[i][j] = new CollisioniS(x, y, d,d, 256 / 2, labirinto[i][j]);
+                collisioni[i][j] = new CollisioniS(x, y, d,d, 256-2*28, labirinto[i][j]);
 
             }
         }
-        /*
-        shape.begin(ShapeRenderer.ShapeType.Filled);
-        for (int i = 0; i < labirinto.length; i++) {
-            for (int j = 0; j < labirinto[i].length; j++) {
-                int x = dimensioneImmagine * i;
-                int y = dimensioneImmagine * (labirinto[i].length - j) - dimensioneImmagine;
-                int d = dimensioneImmagine;
-                collisioni[i][j].testCollisioni(shape);
-            }
-        }
-        shape.end();*/
     }
 
     /** Disegna labirinto, player e messaggi. */
@@ -366,15 +355,8 @@ public class MainGame extends ApplicationAdapter {
                 int x =dimensioneImmagine*i -worldX;
                 int y=dimensioneImmagine*(labirinto[i].length-j)-dimensioneImmagine -worldY;
                 int d=dimensioneImmagine;
-                //System.out.println(impostaDimensioneImmagine);
-                //batch.begin();
-                //batch.draw(labirintoImage.get(labirinto[i][j]),impostaDimensioneImmagine*i,impostaDimensioneImmagine*(labirinto[i].length-j)-impostaDimensioneImmagine,impostaDimensioneImmagine,impostaDimensioneImmagine);
                 batch.draw(labirintoImage.get(labirinto[i][j]),x,y,d,d);
                 batch.draw(stone,personaggio[0][0],personaggio[0][1],personaggio[1][0],personaggio[1][1]);
-
-                //collisioni[i][j] = new Collisioni(x,y,d,256/2,labirinto[i][j]);
-
-                //batch.end();
                 if (fini[0] == i && fini[1] ==j){
                     batch.draw(ladder,x+dimensioneImmagine/2-24,y+dimensioneImmagine/2-24,48,48,0,48,48,48,false,false);
                 }
@@ -393,6 +375,22 @@ public class MainGame extends ApplicationAdapter {
             batch.end();
 
         }
+        /*
+        //Usato per il debug, permette di vedere le collisioni
+        shape.begin(ShapeRenderer.ShapeType.Filled);
+        for (int i = 0; i < labirinto.length; i++) {
+            for (int j = 0; j < labirinto[i].length; j++) {
+                int x = dimensioneImmagine * i;
+                int y = dimensioneImmagine * (labirinto[i].length - j) - dimensioneImmagine;
+                int d = dimensioneImmagine;
+                CollisioniS test = (CollisioniS) collisioni[i][j];
+                test.testCollisioni(shape);
+
+            }
+        }
+        shape.end();
+
+         */
     }
 
     @Override

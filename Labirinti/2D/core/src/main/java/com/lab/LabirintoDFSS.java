@@ -51,7 +51,7 @@ public class LabirintoDFSS {//Depth-First Search
         genera(1, 1);
         analizza();
 
-        stampaLabirinto();
+        //stampaLabirinto();
         return labirinto;
     }
 
